@@ -64,3 +64,6 @@ dist
 
 database.db
 database.db-journal
+
+# VScode directory
+.vscode
