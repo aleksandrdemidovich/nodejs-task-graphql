@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import {
+  GraphQLBoolean,
   GraphQLFloat,
   GraphQLInputObjectType,
   GraphQLList,
@@ -8,17 +9,32 @@ import {
   GraphQLString,
 } from 'graphql';
 import { UUIDType } from './uuid.js';
-import { IProfileType, Profile } from './profileTypes.js';
-import { IPostType, Post } from './postTypes.js';
+import { ProfileType, Profile } from './profileTypes.js';
+import { PostType, Post } from './postTypes.js';
 
-export interface IUserType {
+export interface UserType {
   id: string;
   name: string;
   balance: number;
-  profile: IProfileType;
-  posts: IPostType[];
-  userSubscribedTo: IUserType[];
-  subscribedToUser: IUserType[];
+  profile: ProfileType;
+  posts: PostType[];
+  userSubscribedTo: UserType[];
+  subscribedToUser: UserType[];
+}
+
+interface CreateUser {
+  dto: {
+    name: string;
+    balance: number;
+  };
+}
+
+interface UpdateUser {
+  id: string;
+  dto: {
+    name: string;
+    balance: number;
+  };
 }
 
 class User {
@@ -55,6 +71,30 @@ class User {
 
   static arrayType = new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(User.type)));
 
+  static argsCreate: GraphQLInputObjectType = new GraphQLInputObjectType({
+    name: 'CreateUserInput',
+    fields: () => ({
+      name: {
+        type: new GraphQLNonNull(GraphQLString),
+      },
+      balance: {
+        type: new GraphQLNonNull(GraphQLFloat),
+      },
+    }),
+  });
+
+  static argsUpdate: GraphQLInputObjectType = new GraphQLInputObjectType({
+    name: 'ChangeUserInput',
+    fields: () => ({
+      name: {
+        type: GraphQLString,
+      },
+      balance: {
+        type: GraphQLFloat,
+      },
+    }),
+  });
+
   static resolver = {
     getOnce: async (_parent, args: { id: string }, fastify: FastifyInstance) => {
       const user = await fastify.prisma.user.findUnique({
@@ -67,7 +107,7 @@ class User {
     getAll: async (_parent, _args, fastify: FastifyInstance) => {
       return fastify.prisma.user.findMany();
     },
-    usersFromProfile: async (parent: IProfileType, _args, fastify: FastifyInstance) => {
+    usersFromProfile: async (parent: ProfileType, _args, fastify: FastifyInstance) => {
       const user = await fastify.prisma.user.findUnique({
         where: {
           id: parent.userId,
@@ -75,7 +115,7 @@ class User {
       });
       return user;
     },
-    usersFromPost: async (parent: IPostType, _args, fastify: FastifyInstance) => {
+    usersFromPost: async (parent: PostType, _args, fastify: FastifyInstance) => {
       const user = await fastify.prisma.user.findUnique({
         where: {
           id: parent.authorId,
@@ -105,6 +145,26 @@ class User {
         },
       });
     },
+    create: async (_parent, args: CreateUser, fastify: FastifyInstance) => {
+      const newUser = await fastify.prisma.user.create({
+        data: args.dto,
+      });
+      return newUser;
+    },
+    update: async (_parent, args: UpdateUser, fastify: FastifyInstance) => {
+      return fastify.prisma.user.update({
+        where: { id: args.id },
+        data: args.dto,
+      });
+    },
+    delete: async (_parent, args: { id: string }, fastify: FastifyInstance) => {
+      await fastify.prisma.user.delete({
+        where: {
+          id: args.id,
+        },
+      });
+      return null;
+    },
   };
 }
 
@@ -119,4 +179,35 @@ const users = {
   resolve: User.resolver.getAll,
 };
 
-export { user, users, User };
+const createUser = {
+  type: User.type,
+  args: {
+    dto: {
+      type: new GraphQLNonNull(User.argsCreate),
+    },
+  },
+  resolve: User.resolver.create,
+};
+
+const changeUser = {
+  type: User.type,
+  args: {
+    id: {
+      type: new GraphQLNonNull(UUIDType),
+    },
+    dto: {
+      type: new GraphQLNonNull(User.argsUpdate),
+    },
+  },
+  resolve: User.resolver.update,
+};
+
+const deleteUser = {
+  type: GraphQLBoolean,
+  args: {
+    id: { type: UUIDType },
+  },
+  resolve: User.resolver.delete,
+};
+
+export { user, users, User, createUser, changeUser, deleteUser };

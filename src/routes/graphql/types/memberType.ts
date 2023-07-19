@@ -7,13 +7,13 @@ import {
   GraphQLObjectType,
 } from 'graphql';
 import { memberTypeId } from './memberTypeId.js';
-import { IProfileType, Profile } from './profileTypes.js';
+import { ProfileType, Profile } from './profileTypes.js';
 
 export interface IMemberType {
   id: string;
   discount: number;
   postsLimitPerMonth: number;
-  profiles: IProfileType[];
+  profiles: ProfileType[];
 }
 
 class MemberType {
@@ -53,7 +53,7 @@ class MemberType {
       return fastify.prisma.memberType.findMany();
     },
     memberTypeFromProfile: async (
-      parent: IProfileType,
+      parent: ProfileType,
       _args,
       fastify: FastifyInstance,
     ) => {
