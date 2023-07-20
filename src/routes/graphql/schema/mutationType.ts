@@ -1,5 +1,11 @@
 import { GraphQLObjectType } from 'graphql';
-import { createUser, changeUser, deleteUser } from '../types/userTypes.js';
+import {
+  createUser,
+  changeUser,
+  deleteUser,
+  subscribeTo,
+  unsubscribeFrom,
+} from '../types/userTypes.js';
 import { createProfile, changeProfile, deleteProfile } from '../types/profileTypes.js';
 import { createPost, changePost, deletePost } from '../types/postTypes.js';
 
@@ -9,6 +15,8 @@ const Mutation = new GraphQLObjectType({
     createUser,
     changeUser,
     deleteUser,
+    subscribeTo,
+    unsubscribeFrom,
 
     createProfile,
     changeProfile,
@@ -17,11 +25,6 @@ const Mutation = new GraphQLObjectType({
     createPost,
     changePost,
     deletePost,
-
-    //Figure out later
-    // createMemberType:
-    //updateMemberType:
-    //deleteMemberType:
   },
 });
 

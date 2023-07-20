@@ -77,15 +77,9 @@ class Post {
   static argsUpdate = new GraphQLInputObjectType({
     name: 'ChangePostInput',
     fields: () => ({
-      title: {
-        type: GraphQLString,
-      },
-      content: {
-        type: GraphQLString,
-      },
-      authorId: {
-        type: UUIDType,
-      },
+      title: { type: GraphQLString },
+      content: { type: GraphQLString },
+      authorId: { type: UUIDType },
     }),
   });
 
@@ -115,7 +109,7 @@ class Post {
       return newPost;
     },
     update: async (_parent, args: UpdatePost, fastify: FastifyInstance) => {
-      const updatedPost = fastify.prisma.post.update({
+      const updatedPost = await fastify.prisma.post.update({
         where: { id: args.id },
         data: args.dto,
       });
@@ -155,12 +149,8 @@ const createPost = {
 const changePost = {
   type: Post.type,
   args: {
-    id: {
-      type: new GraphQLNonNull(UUIDType),
-    },
-    dto: {
-      type: new GraphQLNonNull(Post.argsUpdate),
-    },
+    id: { type: new GraphQLNonNull(UUIDType) },
+    dto: { type: new GraphQLNonNull(Post.argsUpdate) },
   },
   resolve: Post.resolver.update,
 };

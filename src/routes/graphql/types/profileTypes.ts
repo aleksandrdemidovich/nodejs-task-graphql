@@ -94,23 +94,11 @@ class Profile {
 
   static argsUpdate: GraphQLInputObjectType = new GraphQLInputObjectType({
     name: 'ChangeProfileInput',
-    fields: () => ({
-      id: {
-        type: new GraphQLNonNull(UUIDType),
-      },
-      isMale: {
-        type: new GraphQLNonNull(GraphQLBoolean),
-      },
-      yearOfBirth: {
-        type: new GraphQLNonNull(GraphQLInt),
-      },
-      userId: {
-        type: new GraphQLNonNull(UUIDType),
-      },
-      memberTypeId: {
-        type: new GraphQLNonNull(memberTypeId),
-      },
-    }),
+  fields: () => ({
+    isMale: { type: GraphQLBoolean },
+    yearOfBirth: { type: GraphQLInt },
+    memberTypeId: { type: memberTypeId },
+  }),
   });
 
   static resolver = {
@@ -151,10 +139,11 @@ class Profile {
       return newProfile;
     },
     update: async (_parent, args: UpdateProfile, fastify: FastifyInstance) => {
-      return fastify.prisma.profile.update({
+      const updatedProfile = await fastify.prisma.profile.update({
         where: { id: args.id },
         data: args.dto,
       });
+      return updatedProfile;
     },
     delete: async (_parent, args: { id: string }, fastify: FastifyInstance) => {
       await fastify.prisma.profile.delete({

@@ -11,6 +11,7 @@ import {
 import { UUIDType } from './uuid.js';
 import { ProfileType, Profile } from './profileTypes.js';
 import { PostType, Post } from './postTypes.js';
+import { Void } from './Void.js';
 
 export interface UserType {
   id: string;
@@ -35,6 +36,11 @@ interface UpdateUser {
     name: string;
     balance: number;
   };
+}
+
+interface UserSubscribedTo {
+  userId: string;
+  authorId: string;
 }
 
 class User {
@@ -152,10 +158,11 @@ class User {
       return newUser;
     },
     update: async (_parent, args: UpdateUser, fastify: FastifyInstance) => {
-      return fastify.prisma.user.update({
+      const updatedUser = await fastify.prisma.user.update({
         where: { id: args.id },
         data: args.dto,
       });
+      return updatedUser;
     },
     delete: async (_parent, args: { id: string }, fastify: FastifyInstance) => {
       await fastify.prisma.user.delete({
@@ -164,6 +171,34 @@ class User {
         },
       });
       return null;
+    },
+    subscribeTo: async (_parent, args: UserSubscribedTo, fastify: FastifyInstance) => {
+      return await fastify.prisma.user.update({
+        where: {
+          id: args.userId,
+        },
+        data: {
+          userSubscribedTo: {
+            create: {
+              authorId: args.authorId,
+            },
+          },
+        },
+      });
+    },
+    unsubscribeFrom: async (
+      _parent,
+      args: UserSubscribedTo,
+      fastify: FastifyInstance,
+    ) => {
+      await fastify.prisma.subscribersOnAuthors.delete({
+        where: {
+          subscriberId_authorId: {
+            subscriberId: args.userId,
+            authorId: args.authorId,
+          },
+        },
+      });
     },
   };
 }
@@ -210,4 +245,30 @@ const deleteUser = {
   resolve: User.resolver.delete,
 };
 
-export { user, users, User, createUser, changeUser, deleteUser };
+const subscribeTo = {
+  type: User.type,
+  args: {
+    userId: {
+      type: new GraphQLNonNull(UUIDType),
+    },
+    authorId: {
+      type: new GraphQLNonNull(UUIDType),
+    },
+  },
+  resolve: User.resolver.subscribeTo,
+};
+
+const unsubscribeFrom = {
+  type: Void,
+  args: {
+    userId: {
+      type: new GraphQLNonNull(UUIDType),
+    },
+    authorId: {
+      type: new GraphQLNonNull(UUIDType),
+    },
+  },
+  resolve: User.resolver.unsubscribeFrom,
+};
+
+export { user, users, User, createUser, changeUser, deleteUser, subscribeTo, unsubscribeFrom };
