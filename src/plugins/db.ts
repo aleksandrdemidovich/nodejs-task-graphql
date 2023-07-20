@@ -26,7 +26,7 @@ export default fp(async (fastify) => {
         return query(args).catch(handlePrismaError);
       },
     },
-  }) as PrismaClient;
+  }) as unknown as PrismaClient;
 
   fastify.decorate('prismaStats', {
     operationHistory: [],
@@ -41,41 +41,18 @@ function handlePrismaError(error: unknown) {
   };
 
   if (error instanceof PrismaClientKnownRequestError) {
-    let errorField = 'unknown';
-    if (error.meta?.target && Array.isArray(error.meta.target)) {
-      errorField = error.meta.target.join(', ');
-    } else if (typeof error.meta?.field_name === 'string') {
-      errorField = error.meta.field_name;
-    }
-
-    switch (error.code) {
-      case 'P2002':
-        info.mes = `Unique constraint: ${errorField}.`;
-        info.code = 422;
-        break;
-      case 'P2003':
-        info.mes = `Foreign key constraint: ${errorField}.`;
-        info.code = 422;
-        break;
-      case 'P2025':
-        info.mes = `One or more records that were required but not found: ${errorField}.`;
-        info.code = 422;
-        break;
-      default:
-        info.mes = `Known database client error.`;
-        info.code = 502;
-    }
-  }
-  if (error instanceof PrismaClientUnknownRequestError) {
-    info.mes = 'Unknown database client error.';
-    info.code = 502;
+    info.mes = error.message;
+    info.code = 422;
   }
   if (error instanceof PrismaClientValidationError) {
-    info.mes = 'Database validation error.';
+    info.mes = error.message;
     info.code = 400;
   }
-  if (error instanceof PrismaClientRustPanicError) {
-    info.mes = 'Database is unavailable.';
+  if (
+    error instanceof PrismaClientUnknownRequestError ||
+    error instanceof PrismaClientRustPanicError
+  ) {
+    info.mes = error.message;
     info.code = 502;
   }
 
