@@ -8,6 +8,7 @@ import {
 } from 'graphql';
 import { memberTypeId } from './memberTypeId.js';
 import { ProfileType, Profile } from './profileTypes.js';
+import { DataRecord, IContext } from './dataLoaderTypes.js';
 
 export interface IMemberType {
   id: string;
@@ -16,7 +17,7 @@ export interface IMemberType {
   profiles: ProfileType[];
 }
 
-class MemberType {
+export class MemberType {
   static type: GraphQLObjectType = new GraphQLObjectType({
     name: 'MemberType',
     fields: () => ({
@@ -31,7 +32,11 @@ class MemberType {
       },
       profiles: {
         type: new GraphQLList(Profile.type),
-        resolve: Profile.resolver.profileFromMemberType,
+        resolve: async (
+          source: IMemberType,
+          _: DataRecord,
+          { profilesByMemberTypeIdLoader }: IContext,
+        ) => profilesByMemberTypeIdLoader.load(source.id),
       },
     }),
   });
@@ -41,16 +46,16 @@ class MemberType {
   );
 
   static resolver = {
-    getOnce: async (_parent, args: { id: string }, fastify: FastifyInstance) => {
-      const memberType = await fastify.prisma.memberType.findUnique({
+    getOnce: async (_parent, args: { id: string }, { prisma }: IContext) => {
+      const memberType = await prisma.memberType.findUnique({
         where: {
           id: args.id,
         },
       });
       return memberType;
     },
-    getAll: async (_parent, _args, fastify: FastifyInstance) => {
-      return fastify.prisma.memberType.findMany();
+    getAll: async (_parent, _args, { prisma }: IContext) => {
+      return prisma.memberType.findMany();
     },
     memberTypeFromProfile: async (
       parent: ProfileType,
@@ -78,4 +83,4 @@ const memberTypes = {
   resolve: MemberType.resolver.getAll,
 };
 
-export { memberType, memberTypes, MemberType };
+export default { memberType, memberTypes };

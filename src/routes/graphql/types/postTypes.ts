@@ -8,13 +8,15 @@ import {
   GraphQLString,
 } from 'graphql';
 import { UUIDType } from './uuid.js';
-import { UserType, User } from './userTypes.js';
+import { UserType } from './userTypes.js';
+import { User } from './userTypes.js';
+import { DataRecord, IContext } from './dataLoaderTypes.js';
 
 export interface PostType {
   id: string;
   title: string;
   content: string;
-  author: UserType;
+  author?: UserType;
   authorId: string;
 }
 
@@ -34,7 +36,7 @@ interface UpdatePost {
   };
 }
 
-class Post {
+export class Post {
   static type: GraphQLObjectType = new GraphQLObjectType({
     name: 'Post',
     fields: () => ({
@@ -52,7 +54,8 @@ class Post {
       },
       author: {
         type: User.type,
-        resolve: User.resolver.usersFromPost,
+        resolve: async (source: PostType, _: DataRecord, { userLoader }: IContext) =>
+          userLoader.load(source.authorId),
       },
     }),
   });
@@ -84,39 +87,39 @@ class Post {
   });
 
   static resolver = {
-    getOnce: async (_parent, args: { id: string }, fastify: FastifyInstance) => {
-      const post = await fastify.prisma.post.findUnique({
+    getOnce: async (_parent, args: { id: string }, { prisma }: IContext) => {
+      const post = await prisma.post.findUnique({
         where: {
           id: args.id,
         },
       });
       return post;
     },
-    getAll: async (_parent, _args, fastify: FastifyInstance) => {
-      return fastify.prisma.post.findMany();
+    getAll: async (_parent, _args, { prisma }: IContext) => {
+      return prisma.post.findMany();
     },
-    postFromParent: async (parent: UserType, _args, fastify: FastifyInstance) => {
-      return fastify.prisma.post.findMany({
+    postFromParent: async (parent: UserType, _args, { prisma }: IContext) => {
+      return prisma.post.findMany({
         where: {
           authorId: parent.id,
         },
       });
     },
-    create: async (_parent, args: CreatePost, fastify: FastifyInstance) => {
-      const newPost = await fastify.prisma.post.create({
+    create: async (_parent, args: CreatePost, { prisma }: IContext) => {
+      const newPost = await prisma.post.create({
         data: args.dto,
       });
       return newPost;
     },
-    update: async (_parent, args: UpdatePost, fastify: FastifyInstance) => {
-      const updatedPost = await fastify.prisma.post.update({
+    update: async (_parent, args: UpdatePost, { prisma }: IContext) => {
+      const updatedPost = await prisma.post.update({
         where: { id: args.id },
         data: args.dto,
       });
       return updatedPost;
     },
-    delete: async (_parent, args: { id: string }, fastify: FastifyInstance) => {
-      await fastify.prisma.post.delete({
+    delete: async (_parent, args: { id: string }, { prisma }: IContext) => {
+      await prisma.post.delete({
         where: {
           id: args.id,
         },
@@ -163,4 +166,4 @@ const deletePost = {
   resolve: Post.resolver.delete,
 };
 
-export { post, posts, Post, createPost, changePost, deletePost };
+export default { post, posts, createPost, changePost, deletePost };

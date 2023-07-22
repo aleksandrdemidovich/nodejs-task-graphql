@@ -1,20 +1,20 @@
 import { GraphQLObjectType } from 'graphql';
-import { memberType, memberTypes } from '../types/memberType.js';
-import { post, posts } from '../types/postTypes.js';
-import { profile, profiles } from '../types/profileTypes.js';
-import { user, users } from '../types/userTypes.js';
+import MemberQuery from '../types/memberType.js';
+import PostQuery from '../types/postTypes.js';
+import UserQuery from '../types/userTypes.js';
+import ProfileQuery from '../types/profileTypes.js';
 
 const Query = new GraphQLObjectType({
   name: 'Query',
   fields: {
-    user,
-    users,
-    post,
-    posts,
-    profile,
-    profiles,
-    memberType,
-    memberTypes,
+    user: UserQuery.user,
+    users: UserQuery.users,
+    post: PostQuery.post,
+    posts: PostQuery.posts,
+    profile: ProfileQuery.profile,
+    profiles: ProfileQuery.profiles,
+    memberType: MemberQuery.memberType,
+    memberTypes: MemberQuery.memberTypes,
   },
 });
 

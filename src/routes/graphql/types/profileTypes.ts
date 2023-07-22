@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import fastify, { FastifyInstance } from 'fastify';
 import {
   GraphQLBoolean,
   GraphQLInputObjectType,
@@ -10,7 +10,10 @@ import {
 import { UUIDType } from './uuid.js';
 import { memberTypeId } from './memberTypeId.js';
 import { IMemberType, MemberType } from './memberType.js';
-import { UserType, User } from './userTypes.js';
+import { UserType } from './userTypes.js';
+import { User } from './userTypes.js';
+import { DataRecord, IContext } from './dataLoaderTypes.js';
+import { MemberTypeId } from '../../member-types/schemas.js';
 
 export interface ProfileType {
   id: string;
@@ -40,7 +43,7 @@ interface UpdateProfile {
   };
 }
 
-class Profile {
+export class Profile {
   static type: GraphQLObjectType = new GraphQLObjectType({
     name: 'Profile',
     fields: () => ({
@@ -58,14 +61,19 @@ class Profile {
       },
       user: {
         type: User.type,
-        resolve: User.resolver.usersFromProfile,
+        resolve: async (source: ProfileType, _: DataRecord, { userLoader }: IContext) =>
+          userLoader.load(source.userId),
       },
       memberTypeId: {
         type: memberTypeId,
       },
       memberType: {
         type: MemberType.type,
-        resolve: MemberType.resolver.memberTypeFromProfile,
+        resolve: async (
+          source: ProfileType,
+          _: DataRecord,
+          { memberTypeLoader }: IContext,
+        ) => memberTypeLoader.load(source.memberTypeId as MemberTypeId),
       },
     }),
   });
@@ -94,59 +102,55 @@ class Profile {
 
   static argsUpdate: GraphQLInputObjectType = new GraphQLInputObjectType({
     name: 'ChangeProfileInput',
-  fields: () => ({
-    isMale: { type: GraphQLBoolean },
-    yearOfBirth: { type: GraphQLInt },
-    memberTypeId: { type: memberTypeId },
-  }),
+    fields: () => ({
+      isMale: { type: GraphQLBoolean },
+      yearOfBirth: { type: GraphQLInt },
+      memberTypeId: { type: memberTypeId },
+    }),
   });
 
   static resolver = {
-    getOnce: async (_parent, args: { id: string }, fastify: FastifyInstance) => {
-      const profile = await fastify.prisma.profile.findUnique({
+    getOnce: async (_parent, args: { id: string }, { prisma }: IContext) => {
+      const profile = await prisma.profile.findUnique({
         where: {
           id: args.id,
         },
       });
       return profile;
     },
-    getAll: async (_parent, _args, fastify: FastifyInstance) => {
-      return fastify.prisma.profile.findMany();
+    getAll: async (_parent, _args, { prisma }: IContext) => {
+      return prisma.profile.findMany();
     },
-    profileFromParent: async (parent: UserType, _args, fastify: FastifyInstance) => {
-      const profile = await fastify.prisma.profile.findUnique({
+    profileFromParent: async (parent: UserType, _args, { prisma }: IContext) => {
+      const profile = await prisma.profile.findUnique({
         where: {
           userId: parent.id,
         },
       });
       return profile;
     },
-    profileFromMemberType: async (
-      parent: IMemberType,
-      _args,
-      fastify: FastifyInstance,
-    ) => {
-      return fastify.prisma.profile.findMany({
+    profileFromMemberType: async (parent: IMemberType, _args, { prisma }: IContext) => {
+      return prisma.profile.findMany({
         where: {
           memberTypeId: parent.id,
         },
       });
     },
-    create: async (_parent, args: CreateProfile, fastify: FastifyInstance) => {
-      const newProfile = await fastify.prisma.profile.create({
+    create: async (_parent, args: CreateProfile, { prisma }: IContext) => {
+      const newProfile = await prisma.profile.create({
         data: args.dto,
       });
       return newProfile;
     },
-    update: async (_parent, args: UpdateProfile, fastify: FastifyInstance) => {
-      const updatedProfile = await fastify.prisma.profile.update({
+    update: async (_parent, args: UpdateProfile, { prisma }: IContext) => {
+      const updatedProfile = await prisma.profile.update({
         where: { id: args.id },
         data: args.dto,
       });
       return updatedProfile;
     },
-    delete: async (_parent, args: { id: string }, fastify: FastifyInstance) => {
-      await fastify.prisma.profile.delete({
+    delete: async (_parent, args: { id: string }, { prisma }: IContext) => {
+      await prisma.profile.delete({
         where: {
           id: args.id,
         },
@@ -201,4 +205,4 @@ const deleteProfile = {
   resolve: Profile.resolver.delete,
 };
 
-export { profile, profiles, Profile, createProfile, changeProfile, deleteProfile };
+export default { profile, profiles, createProfile, changeProfile, deleteProfile };
